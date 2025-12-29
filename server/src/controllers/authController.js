@@ -1,6 +1,6 @@
-const userModel = require("../models/userModel.js");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
+const userModel = require("../models/userModel");
 
 
 const adminRegistration = async (req, res) => {
@@ -55,102 +55,17 @@ const adminRegistration = async (req, res) => {
     }
 };
 
-
-// const registerUser = async (req, res) => {
-//     try {
-//         const { name, email, password, organizationId, managerId, role } = req.body;
-
-//         const passwordRegex =
-//             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-//         if (!passwordRegex.test(password)) {
-//             return res.status(400).json({
-//                 message:
-//                     "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character.",
-//             });
-//         }
-
-
-//         const creator = req.authanticatedUser;
-
-
-//         if (role === "manager") {
-//             if (creator.role !== "admin") {
-//                 return res.status(403).json({ message: "Only Admin can create Managers" });
-//             }
-//         } else if (role === "user" || role === "sub-manager") {
-//             if (creator.role !== "manager") {
-//                 return res.status(403).json({ message: "Only Manager can create Users and sub-manager" });
-//             }
-//         } else {
-//             return res.status(400).json({ message: "Invalid role" });
-//         }
-
-//         if (role === "manager") {
-//             if (!name || !email || !password || !organizationId) {
-//                 return res.status(400).json({ message: "All fields are required for manager" });
-//             }
-//         }
-//         if (role === "sub-manager") {
-//             if (!name || !email || !password || !organizationId || !managerId) {
-//                 return res.status(400).json({ message: "All fields are required for sub-manager" });
-//             }
-//         }
-
-//         if (role === "user") {
-//             if (!name || !email || !password || !managerId) {
-//                 return res.status(400).json({ message: "All fields are required for user" });
-//             }
-//         }
-
-//         const existingUser = await userModel.findOne({ email });
-//         if (existingUser) {
-//             return res.status(400).json({ message: "User already exists" });
-//         }
-
-//         const hashedPassword = await bcrypt.hash(password, 10);
-
-//         const newUser = await userModel.create({
-//             name,
-//             email,
-//             password: hashedPassword,
-//             organizationId: (role === "manager" || role === "sub-manager") ? organizationId : null,
-//             managerId: (role === "user" || role === "sub-manager") ? managerId : null,
-//             role
-//         });
-
-//         return res.status(201).json({
-//             message: `${role.charAt(0).toUpperCase() + role.slice(1)} registered successfully`,
-//             user: {
-//                 _id: newUser._id,
-//                 name: newUser.name,
-//                 email: newUser.email,
-//                 role: newUser.role,
-//                 organizationId: newUser.organizationId,
-//                 managerId: newUser.managerId
-//             }
-//         });
-
-//     } catch (error) {
-//         console.error("Register Error:", error);
-//         return res.status(500).json({
-//             message: "Error occurred while registering the user",
-//             error: error.message
-//         });
-//     }
-// };
-
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, organizationId, role } = req.body;
+        const { name, email, password, role, organizationId, venues } = req.body;
         const creator = req.authenticatedUser;
 
-        //  sub-manager & user cannot create anyone
+        // ❌ Only admin & manager can create users
         if (!["admin", "manager"].includes(creator.role)) {
             return res.status(403).json({ message: "You are not allowed to create users" });
         }
 
-        // Role permission check
+        // Role permissions
         const rolePermissions = {
             admin: ["manager"],
             manager: ["sub-manager", "user"],
@@ -178,15 +93,18 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // Manager-specific validation
+        // Admin → Manager
         if (role === "manager") {
+            if (creator.role !== "admin") {
+                return res.status(403).json({ message: "Only admin can create managers" });
+            }
+
             if (!organizationId) {
                 return res.status(400).json({
                     message: "organizationId is required for manager",
                 });
             }
 
-            // ✅ CHECK: One manager per organization
             const existingManager = await userModel.findOne({
                 role: "manager",
                 organizationId,
@@ -199,7 +117,22 @@ const registerUser = async (req, res) => {
             }
         }
 
-        // Check if user already exists
+        // Manager → User / Sub-manager
+        if (["user", "sub-manager"].includes(role)) {
+            if (creator.role !== "manager") {
+                return res.status(403).json({
+                    message: "Only manager can create users and sub-managers",
+                });
+            }
+
+            if (!Array.isArray(venues) || venues.length === 0) {
+                return res.status(400).json({
+                    message: "At least one venue is required",
+                });
+            }
+        }
+
+        // Check existing user
         const existingUser = await userModel.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: "User already exists" });
@@ -212,8 +145,11 @@ const registerUser = async (req, res) => {
             email,
             password: hashedPassword,
             role,
-            organizationId: role === "manager" ? organizationId : null,
-            managerId: creator.role === "manager" ? creator._id : null,
+            organizationId:
+                role === "manager" ? organizationId : creator.organizationId,
+            managerId:
+                creator.role === "manager" ? creator._id : null,
+            venues: ["user", "sub-manager"].includes(role) ? venues : [],
         });
 
         return res.status(201).json({
@@ -236,14 +172,14 @@ const registerUser = async (req, res) => {
 };
 
 
-
 const logInUser = async (req, res) => {
     const { email, password } = req.body;
 
-    console.log(req.body);
+    // console.log(req.body);
 
     try {
-        const existingUser = await userModel.findOne({ email });
+        const existingUser = await userModel.findOne({ email }).select("+password");
+
         if (!existingUser)
             return res.status(404).json({ message: "User not found" });
 
@@ -291,5 +227,21 @@ const logOutUser = async (req, res) => {
     }
 }
 
+// verified user after login
+const verifyMe = async (req, res) => {
+    try {
+        const user = req.user.toObject();
+        // delete user.password;
 
-module.exports = { registerUser, logInUser, logOutUser, adminRegistration };
+        res.status(200).json({
+            success: true,
+            user,
+        });
+    } catch (error) {
+        console.error("Error While Verifing User", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe };
