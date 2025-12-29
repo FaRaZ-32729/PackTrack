@@ -1,0 +1,13 @@
+const express = require("express");
+const { createOrganization, getAllOrganizations, getSingleOrganization, updateOrganization, deleteOrganization } = require("../controllers/organizationController");
+const roleAccess = require("../middlewares/roleMiddleware");
+const router = express.Router();
+
+router.post("/new-org", roleAccess("admin"), createOrganization);
+router.get("/all-org", roleAccess("admin"), getAllOrganizations);
+router.get("/single-org/:id", roleAccess("admin"), getSingleOrganization);
+router.put("/update-org/:id", roleAccess("admin"), updateOrganization);
+router.delete("/delete-org", roleAccess("admin"), deleteOrganization);
+
+
+module.exports = router;
