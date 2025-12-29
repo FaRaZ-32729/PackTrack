@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post("/register-admin", adminRegistration);
 router.post("/register", authUser, registerUser);
-router.post("/me", authUser, verifyMe);
+router.get("/me", authUser, verifyMe);
 router.post("/login", logInUser);
 router.delete("/logout", authUser, logOutUser);
 

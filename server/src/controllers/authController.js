@@ -1,6 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/userModel");
+const emails = require("../utils/emails");
+require("dotenv").config();
+
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 
 const adminRegistration = async (req, res) => {
@@ -55,21 +60,25 @@ const adminRegistration = async (req, res) => {
     }
 };
 
+
+
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role, organizationId, venues } = req.body;
-        const creator = req.authenticatedUser;
+        const { name, email, role, organizationId, venues } = req.body;
+        const creator = req.user;
 
-        // ❌ Only admin & manager can create users
         if (!["admin", "manager"].includes(creator.role)) {
-            return res.status(403).json({ message: "You are not allowed to create users" });
+            return res.status(403).json({ message: "You are not allowed" });
         }
 
-        // Role permissions
         const rolePermissions = {
             admin: ["manager"],
             manager: ["sub-manager", "user"],
         };
+
+        // if (!rolePermissions[creator.role]?.includes(role)) {
+        //     return res.status(403).json({ message: "Invalid role assignment" });
+        // }
 
         if (!rolePermissions[creator.role]?.includes(role)) {
             return res.status(403).json({
@@ -77,22 +86,19 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // Required fields
-        if (!name || !email || !password || !role) {
+        if (!name || !email || !role) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // Password validation
-        const passwordRegex =
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        // if (role === "manager" && !organizationId) {
+        //     return res.status(400).json({ message: "organizationId required" });
+        // }
 
-        if (!passwordRegex.test(password)) {
-            return res.status(400).json({
-                message:
-                    "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character.",
-            });
-        }
-
+        // if (["user", "sub-manager"].includes(role)) {
+        //     if (!Array.isArray(venues) || venues.length === 0) {
+        //         return res.status(400).json({ message: "Venues required" });
+        //     }
+        // }
         // Admin → Manager
         if (role === "manager") {
             if (creator.role !== "admin") {
@@ -132,56 +138,125 @@ const registerUser = async (req, res) => {
             }
         }
 
-        // Check existing user
-        const existingUser = await userModel.findOne({ email });
-        if (existingUser) {
+        const exists = await userModel.findOne({ email });
+        if (exists) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Setup token
+        const token = jwt.sign(
+            { email },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: "24h" }
+        );
 
+        const setupLink = `http://localhost:5173/setup-password/${token}`;
+
+        await emails(
+            email,
+            "Set up your Pack Track Account",
+            `
+            <div style="font-family: Arial, sans-serif; color: #333; background: #f5f8fa; padding: 20px; border-radius: 8px;">
+                <div style="text-align: center;">
+                    <img src="cid:logo.png" alt="IOTFIY Logo" style="width: 120px; margin-bottom: 20px;" />
+                </div>
+                <h2 style="color: #0055a5;">Welcome to Pack Track!</h2>
+                <p>Hello <b>${name || email}</b>,</p>
+                <p>Your account has been created. Please click below to set your password:</p>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="${setupLink}"
+                       style="background-color: #0055a5; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px;">
+                       Set Password
+                    </a>
+                </div>
+
+                <p style="font-size: 14px; color: #555;">
+                    This link will expire in 24 hours. If you didn't expect this email, ignore it.
+                </p>
+                <hr/>
+                <p style="font-size: 12px; text-align: center; color: #888;">
+                    © ${new Date().getFullYear()} IOTFIY Solutions. All rights reserved.
+                </p>
+            </div>
+            `
+        );
+
+
+        // Create inactive user
         const newUser = await userModel.create({
             name,
             email,
-            password: hashedPassword,
             role,
             organizationId:
                 role === "manager" ? organizationId : creator.organizationId,
             managerId:
                 creator.role === "manager" ? creator._id : null,
             venues: ["user", "sub-manager"].includes(role) ? venues : [],
+            setupToken: token,
+            isActive: false,
+            isVerified: false,
         });
 
-        return res.status(201).json({
-            message: `${role} created successfully`,
-            user: {
-                _id: newUser._id,
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.role,
-            },
+
+        res.status(201).json({
+            message: "User created. Setup email sent.",
+            user: newUser
         });
 
-    } catch (error) {
-        console.error("Register Error:", error);
-        return res.status(500).json({
-            message: "Error occurred while registering the user",
-            error: error.message,
-        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "User creation failed" });
     }
+};
+
+const setPassword = async (req, res) => {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    const user = await userModel.findOne({
+        email: decoded.email,
+        setupToken: token
+    });
+
+    if (!user) {
+        return res.status(400).json({ message: "Invalid or expired link" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const otp = generateOTP();
+    user.password = hashed;
+    user.otp = otp;
+    user.otpExpiry = Date.now() + 10 * 60 * 1000;
+
+    await user.save();
+
+    await emails(
+        user.email,
+        "Verify OTP",
+        `Your OTP is <b>${otp}</b>`
+    );
+
+    res.json({ message: "Password set. OTP sent." });
 };
 
 
 const logInUser = async (req, res) => {
     const { email, password } = req.body;
 
-    // console.log(req.body);
-
     try {
         const existingUser = await userModel.findOne({ email }).select("+password");
 
         if (!existingUser)
             return res.status(404).json({ message: "User not found" });
+
+        if (!existingUser.isVerified || !existingUser.isActive) {
+            return res.status(403).json({
+                message: "Account not verified"
+            });
+        }
 
         const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
         if (!isPasswordCorrect)
@@ -244,4 +319,4 @@ const verifyMe = async (req, res) => {
 };
 
 
-module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe };
+module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe, setPassword };

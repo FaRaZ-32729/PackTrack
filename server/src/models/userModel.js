@@ -64,8 +64,7 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: true,
-            select: false, // exclude password by default
+            select: false,
         },
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -87,14 +86,20 @@ const userSchema = new mongoose.Schema(
             enum: ["manager", "user", "admin", "sub-manager"],
             required: true,
         },
-        venues: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "venue",
-            required: function () {
-                return this.role === "user" || this.role === "sub-manager";
-            },
-            default: [],
-        },
+        venues: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "venue",
+                required: function () {
+                    return this.role === "user" || this.role === "sub-manager";
+                },
+            }
+        ],
+        otp: { type: String },
+        otpExpiry: { type: Date },
+        setupToken: { type: String },
+        isActive: { type: Boolean, default: false },
+        isVerified: { type: Boolean, default: false }
     },
     { timestamps: true }
 );
@@ -106,5 +111,5 @@ userSchema.index(
 );
 
 const userModel = mongoose.model("users", userSchema);
-    
+
 module.exports = userModel;
