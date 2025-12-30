@@ -10,7 +10,8 @@ const venueSchema = mongoose.Schema({
     },
     organizationId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "organization"
+        ref: "organization",
+        required: true
     }
 
 }, { timestamps: true });

@@ -111,20 +111,6 @@ const registerUser = async (req, res) => {
             }
         }
 
-        // Manager → User / Sub-manager
-        // if (["user", "sub-manager"].includes(role)) {
-        //     if (creator.role !== "manager") {
-        //         return res.status(403).json({
-        //             message: "Only manager can create users and sub-managers",
-        //         });
-        //     }
-
-        //     if (!Array.isArray(venues) || venues.length === 0) {
-        //         return res.status(400).json({
-        //             message: "At least one venue is required",
-        //         });
-        //     }
-        // }
         let venueData = [];
 
         if (["user", "sub-manager"].includes(role)) {

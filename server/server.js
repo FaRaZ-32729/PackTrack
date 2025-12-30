@@ -15,15 +15,12 @@ const authUser = require("./src/middlewares/authMiddleware");
 const path = require("path");
 
 
-
-
-
 dotenv.config();
 const app = express();
 PORT = process.env.PORT || 8000;
 dbConnection();
 
-//default middleware here
+// middlewares
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     "http://localhost:5173",
@@ -42,16 +39,13 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-
-
-
 app.use(cookieParser());
 app.use(express.json());
 app.use("/images", express.static(path.join(__dirname, "src", "images")));
 
 
-//routes here
-app.use("/auth", authRouter)
+// routes
+app.use("/auth", authRouter);
 app.use("/organization", authUser, orgRouter);
 app.use("/venue", authUser, venueRouter);
 app.use("/camera", cameraRouter);
@@ -61,7 +55,7 @@ app.use("/category", categoryRouter);
 app.use("/user", authUser, userRouter);
 
 
-//serever
+// server
 app.listen(PORT, () => {
     console.log(`The Server is running on Port:No ${PORT} `);
 });

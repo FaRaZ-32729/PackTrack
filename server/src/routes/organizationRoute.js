@@ -3,7 +3,7 @@ const { createOrganization, getAllOrganizations, getSingleOrganization, updateOr
 const roleAccess = require("../middlewares/roleMiddleware");
 const router = express.Router();
 
-router.post("/new-org", roleAccess("admin"), createOrganization);
+router.post("/add", roleAccess("admin"), createOrganization);
 router.get("/all-org", roleAccess("admin"), getAllOrganizations);
 router.get("/single-org/:id", roleAccess("admin"), getSingleOrganization);
 router.put("/update-org/:id", roleAccess("admin"), updateOrganization);

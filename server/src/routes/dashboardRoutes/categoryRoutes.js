@@ -3,10 +3,10 @@ const { registerCategory, getAllCategories, updateCategory, deleteCategory, getS
 const upload = require("../../middlewares/upload");
 const router = express.Router();
 
-router.post("/register", upload.single("image"), registerCategory);
+router.post("/add", upload.single("image"), registerCategory);
 router.get("/all", getAllCategories);
 router.get("/one/:id", getSingleCategory);
 router.put("/update/:id", upload.single("image"), updateCategory);
 router.delete("/delete/:id", deleteCategory);
 
-module.exports = router
+module.exports = router     

@@ -4,15 +4,15 @@ const venueModel = require("../models/venueModel");
 
 const createVenue = async (req, res) => {
     try {
-        const { name, address, orgId } = req.body;
+        const { name, address, organizationId } = req.body;
 
         if (!name) return res.status(400).json({ message: "Name is required" });
-        if (!orgId) return res.status(400).json({ message: "Organization Id is required" });
+        if (!organizationId) return res.status(400).json({ message: "Organization Id is required" });
 
-        const existingOrg = await organizationModel.findById(orgId);
+        const existingOrg = await organizationModel.findById(organizationId);
         if (!existingOrg) return res.status(404).json({ message: "Organization not found" });
 
-        const newVenue = await venueModel.create({ name, address, orgId });
+        const newVenue = await venueModel.create({ name, address, organizationId });
         return res.status(201).json({
             message: "Venue created successfully",
             venue: newVenue,
@@ -36,10 +36,10 @@ const getAllVenues = async (req, res) => {
     }
 };
 
-const listVenueForSpecificOrg = async (req, res) => {
+const getVenueByOrg = async (req, res) => {
     try {
         const { id } = req.params;
-        const venues = await venueModel.find({ orgId: id }).populate("orgId", "name");
+        const venues = await venueModel.find({ organizationId: id }).populate("organizationId", "name");
 
         if (!venues || venues.length === 0)
             return res.status(404).json({ message: "No venues found for this organization" });
@@ -96,7 +96,7 @@ const deleteVenue = async (req, res) => {
 module.exports = {
     createVenue,
     getAllVenues,
-    listVenueForSpecificOrg,
+    getVenueByOrg,
     updateVenue,
     deleteVenue,
 };

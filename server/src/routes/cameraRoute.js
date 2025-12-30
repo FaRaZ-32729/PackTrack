@@ -3,7 +3,7 @@ const { registerCamera, listCameraByVenue, streamCamera, updateCamera, deleteCam
 const roleAccess = require("../middlewares/roleMiddleware");
 const router = express.Router();
 
-router.post("/new-camera", roleAccess("admin", "manager", "sub-manager"), registerCamera);
+router.post("/add", roleAccess("admin", "manager", "sub-manager"), registerCamera);
 router.get("/:id", listCameraByVenue);
 router.get("/stream/:id", streamCamera);
 router.put("/update-camera/:id", updateCamera);
