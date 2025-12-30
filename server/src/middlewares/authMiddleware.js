@@ -8,7 +8,6 @@ const authUser = async (req, res, next) => {
         //  Check cookies
         if (req.cookies && req.cookies.token) {
             token = req.cookies.token;
-            console.log(" token", token)
         }
 
         // If not in cookies, check Authorization header
@@ -26,6 +25,8 @@ const authUser = async (req, res, next) => {
 
         const authanticatedUser = await userModel.findById(_id);
         if (!authanticatedUser) return res.status(404).json("User Not Found");
+        
+        console.log(authanticatedUser.name);
 
         req.user = authanticatedUser;
 

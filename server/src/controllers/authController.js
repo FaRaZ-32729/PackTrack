@@ -1,7 +1,9 @@
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/userModel");
 const emails = require("../utils/emails");
+const venueModel = require("../models/venueModel");
 require("dotenv").config();
 
 
@@ -75,10 +77,6 @@ const registerUser = async (req, res) => {
             manager: ["sub-manager", "user"],
         };
 
-        // if (!rolePermissions[creator.role]?.includes(role)) {
-        //     return res.status(403).json({ message: "Invalid role assignment" });
-        // }
-
         if (!rolePermissions[creator.role]?.includes(role)) {
             return res.status(403).json({
                 message: `${creator.role} cannot create ${role}`,
@@ -89,15 +87,6 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // if (role === "manager" && !organizationId) {
-        //     return res.status(400).json({ message: "organizationId required" });
-        // }
-
-        // if (["user", "sub-manager"].includes(role)) {
-        //     if (!Array.isArray(venues) || venues.length === 0) {
-        //         return res.status(400).json({ message: "Venues required" });
-        //     }
-        // }
         // Admin → Manager
         if (role === "manager") {
             if (creator.role !== "admin") {
@@ -123,19 +112,50 @@ const registerUser = async (req, res) => {
         }
 
         // Manager → User / Sub-manager
+        // if (["user", "sub-manager"].includes(role)) {
+        //     if (creator.role !== "manager") {
+        //         return res.status(403).json({
+        //             message: "Only manager can create users and sub-managers",
+        //         });
+        //     }
+
+        //     if (!Array.isArray(venues) || venues.length === 0) {
+        //         return res.status(400).json({
+        //             message: "At least one venue is required",
+        //         });
+        //     }
+        // }
+        let venueData = [];
+
         if (["user", "sub-manager"].includes(role)) {
-            if (creator.role !== "manager") {
-                return res.status(403).json({
-                    message: "Only manager can create users and sub-managers",
+            // Validate ObjectId format
+            const invalidIds = venues.filter(id => !mongoose.Types.ObjectId.isValid(id));
+            if (invalidIds.length > 0) {
+                return res.status(400).json({
+                    message: "Invalid venue id provided",
                 });
             }
 
-            if (!Array.isArray(venues) || venues.length === 0) {
+            //  Fetch venues belonging to organization
+            const foundVenues = await venueModel.find({
+                _id: { $in: venues },
+                organizationId: creator.organizationId,
+            }).select("_id name");
+
+            // Check if all venues exist
+            if (foundVenues.length !== venues.length) {
                 return res.status(400).json({
-                    message: "At least one venue is required",
+                    message: "One or more venues do not belong to your organization",
                 });
             }
+
+            // Prepare venue data (id + name)
+            venueData = foundVenues.map(v => ({
+                venueId: v._id,
+                venueName: v.name,
+            }));
         }
+
 
         const exists = await userModel.findOne({ email });
         if (exists) {
@@ -191,7 +211,7 @@ const registerUser = async (req, res) => {
                 role === "manager" ? organizationId : creator.organizationId,
             managerId:
                 creator.role === "manager" ? creator._id : null,
-            venues: ["user", "sub-manager"].includes(role) ? venues : [],
+            venues: ["user", "sub-manager"].includes(role) ? venueData : [],
             setupToken: token,
             isActive: false,
             isVerified: false,

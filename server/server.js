@@ -6,6 +6,7 @@ const authRouter = require("./src/routes/authRoute");
 const orgRouter = require("./src/routes/organizationRoute");
 const venueRouter = require("./src/routes/venueRoute");
 const cameraRouter = require("./src/routes/cameraRoute");
+const userRouter = require("./src/routes/userRoute");
 const sensorRouter = require("./src/routes/sensorRoute");
 const companyRouter = require("./src/routes/dashboardRoutes/companyRoute");
 const categoryRouter = require("./src/routes/dashboardRoutes/categoryRoutes");
@@ -57,6 +58,7 @@ app.use("/camera", cameraRouter);
 app.use("/sensor", authUser, sensorRouter);
 app.use("/company", companyRouter);
 app.use("/category", categoryRouter);
+app.use("/user", authUser, userRouter);
 
 
 //serever

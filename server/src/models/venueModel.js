@@ -8,7 +8,7 @@ const venueSchema = mongoose.Schema({
     address: {
         type: String,
     },
-    orgId: {
+    organizationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "organization"
     }

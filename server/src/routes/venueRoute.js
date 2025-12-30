@@ -4,7 +4,7 @@ const roleAccess = require("../middlewares/roleMiddleware");
 const authUser = require("../middlewares/authMiddleware");
 const router = express.Router();
 
-router.post("/new-venue", roleAccess("admin", "manager", "sub-manager"), createVenue);
+router.post("/add", roleAccess("admin", "manager", "sub-manager"), createVenue);
 router.get("/:id", listVenueForSpecificOrg);
 router.get("/all-venue", getAllVenues);
 router.put("/update-venue/:id", updateVenue);

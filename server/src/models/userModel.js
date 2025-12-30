@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema(
         },
         organizationId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "organizations",
+            ref: "organization",
             required: function () {
                 // required if role is manager or if user/sub-manager inherits it
                 return this.role === "manager";
@@ -86,15 +86,40 @@ const userSchema = new mongoose.Schema(
             enum: ["manager", "user", "admin", "sub-manager"],
             required: true,
         },
-        venues: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "venue",
-                required: function () {
-                    return this.role === "user" || this.role === "sub-manager";
+        venues: {
+            type: [
+                {
+                    venueId: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "venue",
+                        required: function () {
+                            return this.role === "user" || this.role === "sub-manager";
+                        },
+                    },
+                    venueName: {
+                        type: String,
+                        required: function () {
+                            return this.role === "user" || this.role === "sub-manager";
+                        },
+                    },
                 },
-            }
-        ],
+            ],
+            default: undefined,
+        },
+
+        // venues: [
+        //     {
+        //         type: mongoose.Schema.Types.ObjectId,
+        //         ref: "venue",
+        //         required: function () {
+        //             return this.role === "user" || this.role === "sub-manager";
+        //         },
+        //         venueName: {
+        //             type: String,
+        //         },
+        //     },
+
+        // ],
         otp: { type: String },
         otpExpiry: { type: Date },
         setupToken: { type: String },
