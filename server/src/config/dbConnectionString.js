@@ -9,7 +9,7 @@ const dbConnection = async () => {
         console.log("db connected successfully");
     } catch (error) {
         console.log(error);
-        console.log("error while connecting with mongodbf");
+        console.log("error while connecting with mongodbd");
     }
 
 }

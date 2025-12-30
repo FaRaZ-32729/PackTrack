@@ -61,7 +61,6 @@ const adminRegistration = async (req, res) => {
 };
 
 
-
 const registerUser = async (req, res) => {
     try {
         const { name, email, role, organizationId, venues } = req.body;
@@ -214,6 +213,19 @@ const setPassword = async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
 
+    if (!password)
+        return res.status(400).json({ message: "Password is required" });
+
+    const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+            message:
+                "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character.",
+        });
+    };
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
     const user = await userModel.findOne({
         email: decoded.email,
@@ -233,15 +245,98 @@ const setPassword = async (req, res) => {
 
     await user.save();
 
+    const setupLink = `http://localhost:5173/verify-otp/${token}`;
+
     await emails(
         user.email,
-        "Verify OTP",
-        `Your OTP is <b>${otp}</b>`
+        "Verify Your Pack Track account",
+        `
+  <div style="font-family: Arial, sans-serif; color: #333; padding: 20px; max-width: 600px; margin: auto; border: 1px solid #e6e6e6; border-radius: 8px; background-color: #ffffff;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #e6e6e6;">
+          <img src="cid:logo.png" alt="IOTFIY Logo" style="max-width: 150px;" />
+      </div>
+
+      <h2 style="color: #263238; margin-top: 30px;">Welcome to Pack Track!</h2>
+      <p style="font-size: 14px; line-height: 1.6;">
+          Hi <strong>${user.name || user.email}</strong>,
+          <br><br>
+          Your password has been successfully set. To complete your account setup, please use the one-time password (OTP) below to verify your email address.
+      </p>
+
+      <div style="background-color: #f4faff; border: 1px solid #cde7ff; padding: 15px; margin: 20px 0; text-align: center; font-size: 22px; letter-spacing: 3px; font-weight: bold;">
+          ${otp}
+      </div>
+
+      <div style="text-align: center; margin: 25px 0;">
+            <a href="${setupLink}"
+                style="background-color: #0055a5; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px;">
+                Verify OTP
+            </a>
+      </div>
+
+      <p style="font-size: 14px; line-height: 1.6;">
+          This OTP is valid for the next <strong>10 minutes</strong>. If you didn’t request this, please ignore this email.
+      </p>
+
+      <p style="font-size: 14px; line-height: 1.6;">
+          Best Regards, <br>
+          <strong>LuckyOne Team</strong>
+      </p>
+
+      <div style="text-align: center; font-size: 12px; color: #777; margin-top: 30px;">
+          © ${new Date().getFullYear()} IOTFIY Solutions, All rights reserved.
+          <br>
+          This is an automated message, please do not reply.
+      </div>
+  </div>
+  `
     );
 
     res.json({ message: "Password set. OTP sent." });
 };
 
+// verify otp
+const verifyOTP = async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const { token } = req.params;
+
+        if (!otp || !token)
+            return res.status(400).json({ message: "OTP and token are required" });
+
+        // Decode token to get email
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await userModel.findOne({ email: decoded.email });
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Validate OTP
+        if (user.otp !== otp)
+            return res.status(400).json({ message: "Invalid OTP" });
+
+        if (Date.now() > user.otpExpiry)
+            return res.status(400).json({ message: "OTP expired" });
+
+        // Update user status
+        user.isVerified = true;
+        user.isActive = true;
+        user.otp = null;
+        user.otpExpiry = null;
+        user.setupToken = null;
+
+        await user.save();
+
+        return res.json({
+            message: "Account verified successfully. You can now log in.",
+        });
+    } catch (err) {
+        console.error("OTP Verification Error:", err);
+        if (err.name === "TokenExpiredError") {
+            return res.status(400).json({ message: "Verification link expired" });
+        }
+        return res.status(500).json({ message: "Error verifying OTP" });
+    }
+};
 
 const logInUser = async (req, res) => {
     const { email, password } = req.body;
@@ -319,4 +414,4 @@ const verifyMe = async (req, res) => {
 };
 
 
-module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe, setPassword };
+module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe, setPassword, verifyOTP };
