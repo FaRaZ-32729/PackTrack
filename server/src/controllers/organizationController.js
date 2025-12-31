@@ -1,4 +1,5 @@
 const organizationModel = require("../models/organizationModel");
+const userModel = require("../models/userModel");
 
 const createOrganization = async (req, res) => {
     try {
@@ -52,6 +53,29 @@ const getSingleOrganization = async (req, res) => {
     }
 };
 
+const getOrgByUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!userId) return res.status(400).json({ message: "User Id Required" });
+
+        const user = await userModel.findById(userId).select("-_id -name -email -venues -setupToken  -role -managerId -isActive -isVerified").populate("organizationId", "name");
+
+        if (!user) return res.status(404).json({ message: "User Not Found" });
+
+        if (!user.organizationId || user.organizationId === null) {
+            return res.status(404).json({ message: "Organization Not Found" })
+        }
+
+        const userOrg = user.organizationId
+
+        return res.status(200).json({ message: "Organization Fetched Successfully", userOrg })
+
+    } catch (error) {
+        console.log("error while getting org by userId");
+        return res.status(500).json({ message: "Server Error" });
+    }
+}
+
 const updateOrganization = async (req, res) => {
     try {
         const { id } = req.params;
@@ -103,4 +127,5 @@ module.exports = {
     getSingleOrganization,
     updateOrganization,
     deleteOrganization,
+    getOrgByUser
 };

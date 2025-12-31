@@ -1,4 +1,3 @@
-const { spawn } = require("child_process");
 const cameraModel = require("../models/cameraModel");
 const venueModel = require("../models/venueModel");
 const httpStreamHandler = require("../utils/httpStreamHandler");
@@ -50,6 +49,10 @@ const listCameraByVenue = async (req, res) => {
         if (!venue) return res.status(404).json({ message: "Venue Not Found" });
 
         const cameras = await cameraModel.find({ venueId: id });
+
+        if (!cameras) {
+            return res.status(404).json({ message: "No Camera Found In This Venue" });
+        }
 
         return res.status(200).json({ message: "Cameras Fetched Successfully", cameras });
     } catch (error) {

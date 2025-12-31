@@ -9,7 +9,7 @@ require("dotenv").config();
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-
+// admin registeration api
 const adminRegistration = async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -62,7 +62,7 @@ const adminRegistration = async (req, res) => {
     }
 };
 
-
+// users registeration api
 const registerUser = async (req, res) => {
     try {
         const { name, email, role, organizationId, venues } = req.body;
@@ -215,6 +215,7 @@ const registerUser = async (req, res) => {
     }
 };
 
+// set password after user creation
 const setPassword = async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
@@ -301,7 +302,7 @@ const setPassword = async (req, res) => {
     res.json({ message: "Password set. OTP sent." });
 };
 
-// verify otp
+// verify otp after setting password
 const verifyOTP = async (req, res) => {
     try {
         const { otp } = req.body;
@@ -344,6 +345,7 @@ const verifyOTP = async (req, res) => {
     }
 };
 
+// login 
 const logInUser = async (req, res) => {
     const { email, password } = req.body;
 
@@ -390,6 +392,7 @@ const logInUser = async (req, res) => {
     }
 };
 
+// logout 
 const logOutUser = async (req, res) => {
     try {
         res.clearCookie("token", {
@@ -418,6 +421,5 @@ const verifyMe = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
-
 
 module.exports = { registerUser, logInUser, logOutUser, adminRegistration, verifyMe, setPassword, verifyOTP };

@@ -56,11 +56,12 @@ const getSingleCategory = async (req, res) => {
     }
 };
 
-
-
 const getAllCategories = async (req, res) => {
     try {
         const allCategories = await categoryModel.find();
+        if (!allCategories) {
+            return res.status(404).json({ message: "Categories not found " })
+        }
         return res.status(200).json({ message: "Categories Fetched Successfully", Categories: allCategories });
 
     } catch (error) {
@@ -68,8 +69,6 @@ const getAllCategories = async (req, res) => {
         return res.status(500).json({ message: "Server Error", error: error.message })
     }
 }
-
-
 
 const updateCategory = async (req, res) => {
     try {
@@ -83,13 +82,13 @@ const updateCategory = async (req, res) => {
         if (!existingCategory)
             return res.status(404).json({ message: "Category not found" });
 
-        // 📝 If name is provided, update it
+        // If name is provided, update it
         if (name) {
             name = name.trim().toLowerCase();
             existingCategory.name = name;
         }
 
-        // 🖼️ If a new image is uploaded, replace the old one
+        // If a new image is uploaded, replace the old one
         if (image) {
             // Construct old image path
             const oldImagePath = path.join(__dirname, "../../", existingCategory.image);
@@ -121,8 +120,6 @@ const updateCategory = async (req, res) => {
     }
 };
 
-
-
 const deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
@@ -131,14 +128,14 @@ const deleteCategory = async (req, res) => {
         if (!category)
             return res.status(404).json({ message: "Category Not Found" });
 
-        // 🧹 Delete the image file if it exists
+        // Delete the image file if it exists
         const imagePath = path.join(__dirname, "../../", category.image);
         if (fs.existsSync(imagePath)) {
             fs.unlinkSync(imagePath);
             console.log(`🗑️ Deleted image file: ${imagePath}`);
         }
 
-        // 🗃️ Delete category document from DB
+        // Delete category document from DB
         await categoryModel.findByIdAndDelete(id);
 
         return res

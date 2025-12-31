@@ -7,7 +7,7 @@ router.post("/add", roleAccess("admin", "manager", "sub-manager"), registerCamer
 router.get("/:id", listCameraByVenue);
 router.get("/stream/:id", streamCamera);
 router.put("/update-camera/:id", updateCamera);
-router.delete("/delete-camera/:id", deleteCamera);
+router.delete("/delete-camera/:id", deleteCamera);  ;
 
 
 module.exports = router;

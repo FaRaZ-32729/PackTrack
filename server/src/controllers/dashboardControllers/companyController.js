@@ -23,7 +23,6 @@ const registerCompany = async (req, res) => {
     }
 }
 
-
 const getAllCompanies = async (req, res) => {
     try {
         const allCompnies = await companyModel.find();
@@ -49,7 +48,6 @@ const getSingleCompany = async (req, res) => {
     }
 };
 
-
 const updateCompany = async (req, res) => {
     try {
         const { id } = req.params;
@@ -72,7 +70,6 @@ const updateCompany = async (req, res) => {
         return res.status(500).json({ message: "Server Error", error: error.message });
     }
 }
-
 
 const deleteCompany = async (req, res) => {
     try {
